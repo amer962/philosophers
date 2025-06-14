@@ -12,6 +12,22 @@
 
 #include "philo.h"
 
+void destoy_free(t_data *data, t_philo *philos)
+{
+    int i;
+
+    i = 0;
+    while (i < data->numofphilos)
+    {
+        pthread_mutex_destroy(&data->forks[i].fork);
+        i++;
+    }
+    pthread_mutex_destroy(&data->meal_lock);
+    pthread_mutex_destroy(&data->print_lock);
+    free(data->forks);
+    free(philos);
+}
+
 int main(int argc, char **argv)
 {
     t_data data;
@@ -28,10 +44,15 @@ int main(int argc, char **argv)
             return (1);
         if (init_philos(&data, &philos))
             return (1);
+        data.philos = philos; 
         if (start_sim(&data, philos))
+        {
+            destoy_free(&data, philos);
             return (1);
+        }
     }
     else
         return (ft_return_error("The args ara not correct"));
+    destoy_free(&data, philos);
     return (0);
 }
