@@ -6,7 +6,7 @@
 /*   By: aalquraa <aalquraa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/14 03:13:41 by aalquraa          #+#    #+#             */
-/*   Updated: 2025/06/21 17:06:18 by aalquraa         ###   ########.fr       */
+/*   Updated: 2025/06/21 18:30:37 by aalquraa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ static int	start_threads(t_data *data, t_philo *philos)
 		philos[i].last_meals = data->start_time;
 		if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
 			return (ft_return_error("Failed to create thread"));
-		usleep(100);
+		usleep(430);
 		i++;
 	}
 	return (0);

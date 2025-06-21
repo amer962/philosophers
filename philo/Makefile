@@ -1,7 +1,6 @@
 NAME = philo
 CC = cc
-CFLAGS = -Wall -Wextra -Werror -g -fsanitize=thread 
-RM = rm -f
+CFLAGS = -Wall -Wextra -Werror -g
 
 SRC = main.c\
 	  check_args.c\
