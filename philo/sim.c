@@ -12,6 +12,31 @@
 
 #include "philo.h"
 
+
+// ./philo 2 100 100000 200
+void u_sleep(long time, t_data *data)
+{
+    int start, current;
+    long elapsed;
+    start = time_now();
+    while (1)
+    {
+        pthread_mutex_lock(&data->print_lock);
+        if (data->died_flag)
+        {
+            pthread_mutex_unlock(&data->print_lock);
+            return;
+        }
+        pthread_mutex_unlock(&data->print_lock);
+        current = time_now();
+        elapsed = current - start;
+        // printf("Elapsed time: %ld ms\n", elapsed);
+        if (elapsed >= time)
+        break;
+        usleep(1); // Sleep for a short duration to avoid busy waiting
+    }
+    // printf("Finished sleeping for %ld ms\n", time);
+}
 void printf_routine(t_philo *philo, char *m)
 {
     long time;
@@ -42,6 +67,7 @@ void ft_take_forks(t_philo *philo)
         printf_routine(philo, "has taken a fork");
         pthread_mutex_lock(&philo->right_fork->fork);
         printf_routine(philo, "has taken a fork");
+        usleep(100);
     }
     else
     {
@@ -60,8 +86,7 @@ void ft_eat(t_philo *philo)
     pthread_mutex_unlock(&philo->data->meal_lock);
 
     printf_routine(philo, "is eating");
-    usleep(philo->data->time_to_eat * 1000);
-
+    u_sleep(philo->data->time_to_eat, philo->data);
     pthread_mutex_unlock(&philo->left_fork->fork);
     pthread_mutex_unlock(&philo->right_fork->fork);
 }
@@ -69,7 +94,7 @@ void ft_eat(t_philo *philo)
 void ft_sleep(t_philo *philo)
 {
     printf_routine(philo, "is sleeping");
-	usleep(philo->data->time_to_sleep * 1000);
+	u_sleep(philo->data->time_to_sleep, philo->data);
 }
 
 void ft_think(t_philo *philo)
@@ -136,8 +161,8 @@ void *death_eat_monitor(void *x)
             pthread_mutex_unlock(&data->print_lock);
             return (NULL);
         }
-        usleep(200);
     }
+        usleep(100);
 }
 
 
@@ -160,7 +185,7 @@ int start_sim(t_data *data, t_philo *philos)
         philos[i].last_meals = data->start_time;
         if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
         return (ft_return_error("Failed to create thread"));
-        usleep(200);
+        usleep(100); 
         i++;
     }
     i = 0;
@@ -169,10 +194,10 @@ int start_sim(t_data *data, t_philo *philos)
     while (i < data->numofphilos)
     {
         if (pthread_join(philos[i++].thread, NULL) != 0)
-        return (ft_return_error("Failed to join thread"));
+            return (ft_return_error("Failed to join thread"));
     }
     if (pthread_join(monitor, NULL) != 0)
-    return (ft_return_error("Failed to join thread"));
+        return (ft_return_error("Failed to join thread"));
     return (0);
 }
 // void *death_monitor(void *d)
