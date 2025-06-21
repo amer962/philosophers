@@ -101,42 +101,80 @@ void *routine(void *philosopher)
     }
     return (NULL);
 }
-void *death_monitor(void *d)
+void *death_eat_monitor(void *x)
 {
-    t_data *data = (t_data *)d;
-    while (1) {
+    t_data *data = (t_data *)x;
+
+    while (1)
+    {
         int i = -1;
         int all_ate = 0;
-        while (++i < data->numofphilos) {
+        while (++i < data->numofphilos)
+        {
             pthread_mutex_lock(&data->meal_lock);
             long last_meal = data->philos[i].last_meals;
             int meals = data->philos[i].meals;
             pthread_mutex_unlock(&data->meal_lock);
-            
-            // Check death
-            if ((time_now() - last_meal) >= data->time_to_die) {
+            if ((time_now() - last_meal) >= data->time_to_die)
+            {
                 pthread_mutex_lock(&data->print_lock);
-                if (!data->died_flag) {
+                if (!data->died_flag)
+                {
                     data->died_flag = true;
                     printf("%ld %ld died\n", time_now() - data->start_time, data->philos[i].philo_id);
                 }
                 pthread_mutex_unlock(&data->print_lock);
                 return (NULL);
             }
-            // Check meals
             if (data->numofmeals != -1 && meals >= data->numofmeals)
                 all_ate++;
         }
-        if (data->numofmeals != -1 && all_ate == data->numofphilos) {
+        if (data->numofmeals != -1 && all_ate == data->numofphilos)
+        {
             pthread_mutex_lock(&data->print_lock);
             data->died_flag = true;
             pthread_mutex_unlock(&data->print_lock);
             return (NULL);
         }
-        usleep(500);  // More precise checking
+        usleep(200);
     }
 }
 
+
+int start_sim(t_data *data, t_philo *philos)
+{
+    int i;
+    pthread_t monitor;
+
+    data->start_time = time_now();
+    i = 0;
+    if (data->numofphilos == 1)
+    {
+        printf("0 1 has taken a fork\n");
+        usleep(data->time_to_die * 1000);
+        printf("%ld 1 died\n", data->time_to_die);
+        return (0);
+    }
+    while (i < data->numofphilos)
+    {
+        philos[i].last_meals = data->start_time;
+        if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
+        return (ft_return_error("Failed to create thread"));
+        usleep(200);
+        i++;
+    }
+    i = 0;
+    if (pthread_create(&monitor, NULL, &death_eat_monitor, data) != 0)
+    return (ft_return_error("Failed to create thread"));
+    while (i < data->numofphilos)
+    {
+        if (pthread_join(philos[i++].thread, NULL) != 0)
+        return (ft_return_error("Failed to join thread"));
+    }
+    if (pthread_join(monitor, NULL) != 0)
+    return (ft_return_error("Failed to join thread"));
+    return (0);
+}
 // void *death_monitor(void *d)
 // {
 //     int i;
@@ -174,26 +212,3 @@ void *death_monitor(void *d)
 //     }
 // 	return (NULL);
 // }
-
-int start_sim(t_data *data, t_philo *philos)
-{
-    int i;
-
-    pthread_t monitor;
-    data->start_time = time_now();
-    i = 0;
-    while (i < data->numofphilos)
-    {
-        philos[i].last_meals = data->start_time;
-        if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
-            return (ft_return_error("Failed to create thread"));
-        usleep(100);
-        i++;
-    }
-    i = 0;
-    pthread_create(&monitor, NULL, &death_monitor, data);
-    while (i < data->numofphilos)
-        pthread_join(philos[i++].thread, NULL);
-    pthread_join(monitor, NULL);
-    return (0);
-}

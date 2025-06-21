@@ -6,7 +6,7 @@
 /*   By: aalquraa <aalquraa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/02/23 17:07:53 by aalquraa          #+#    #+#             */
-/*   Updated: 2025/06/14 17:21:11 by aalquraa         ###   ########.fr       */
+/*   Updated: 2025/06/21 12:32:51 by aalquraa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,6 @@ typedef struct s_fork
     int id;
     pthread_mutex_t fork;
 }  t_fork;
-
 
 typedef struct s_philo
 {
@@ -55,7 +54,6 @@ typedef struct s_data
     t_fork *forks;
     t_philo *philos;
 }   t_data;
-
 
 int     init(char **argv, t_data *data);
 int	    ft_return_error(char *m);

@@ -26,6 +26,7 @@ void destoy_free(t_data *data, t_philo *philos)
     pthread_mutex_destroy(&data->print_lock);
     free(data->forks);
     free(philos);
+    //free(data);
 }
 
 int main(int argc, char **argv)

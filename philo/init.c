@@ -6,7 +6,7 @@
 /*   By: aalquraa <aalquraa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/26 15:31:43 by aalquraa          #+#    #+#             */
-/*   Updated: 2025/06/14 17:04:29 by aalquraa         ###   ########.fr       */
+/*   Updated: 2025/06/21 11:53:03 by aalquraa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,8 @@ int init(char **argv, t_data *data)
     data->died_flag = false;
     data->start_time = 0;
     data->forks = NULL;
-    pthread_mutex_init(&data->print_lock, NULL);
-    pthread_mutex_init(&data->meal_lock, NULL);
+    if ((pthread_mutex_init(&data->print_lock, NULL)) || (pthread_mutex_init(&data->meal_lock, NULL)) != 0)
+        return (1);
     return (0);
 }
 

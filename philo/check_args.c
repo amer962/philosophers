@@ -22,11 +22,11 @@ int check_args(int argc, char **argv)
         if (!is_correct(argv[i]))
         {
             printf("Error args\n");
-            return (0);
+            return (1);
         }
         i++;
     }
-    if (ft_atol(argv[1]) < 2 || ft_atol(argv[2]) <= 0 || ft_atol(argv[3]) <= 0 || ft_atol(argv[4]) <= 0 || (argc == 6 && ft_atol(argv[5]) <= 0))
+    if (ft_atol(argv[1]) < 1 || ft_atol(argv[2]) <= 0 || ft_atol(argv[3]) <= 0 || ft_atol(argv[4]) <= 0 || (argc == 6 && ft_atol(argv[5]) <= 0))
     {
         printf("Error: Wrong arguments\n");
         return (1);
