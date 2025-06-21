@@ -6,234 +6,163 @@
 /*   By: aalquraa <aalquraa@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/06/14 03:13:41 by aalquraa          #+#    #+#             */
-/*   Updated: 2025/06/14 03:13:41 by aalquraa         ###   ########.fr       */
+/*   Updated: 2025/06/21 17:06:18 by aalquraa         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "philo.h"
 
-
-// ./philo 2 100 100000 200
-void u_sleep(long time, t_data *data)
+static int	start_threads(t_data *data, t_philo *philos)
 {
-    int start, current;
-    long elapsed;
-    start = time_now();
-    while (1)
-    {
-        pthread_mutex_lock(&data->print_lock);
-        if (data->died_flag)
-        {
-            pthread_mutex_unlock(&data->print_lock);
-            return;
-        }
-        pthread_mutex_unlock(&data->print_lock);
-        current = time_now();
-        elapsed = current - start;
-        // printf("Elapsed time: %ld ms\n", elapsed);
-        if (elapsed >= time)
-        break;
-        usleep(1); // Sleep for a short duration to avoid busy waiting
-    }
-    // printf("Finished sleeping for %ld ms\n", time);
-}
-void printf_routine(t_philo *philo, char *m)
-{
-    long time;
+	int	i;
 
-    pthread_mutex_lock(&philo->data->print_lock);
-    if (!philo->data->died_flag)
-    {
-        time = time_now() - philo->data->start_time;
-        printf("%ld %ld %s\n", time, philo->philo_id, m);
-    }
-    pthread_mutex_unlock(&philo->data->print_lock);
+	i = 0;
+	while (i < data->numofphilos)
+	{
+		philos[i].last_meals = data->start_time;
+		if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
+			return (ft_return_error("Failed to create thread"));
+		usleep(100);
+		i++;
+	}
+	return (0);
 }
 
-long time_now(void)
+static int	join_threads(t_data *data, t_philo *philos)
 {
-    struct timeval time;
-    long milliseconds;
+	int	i;
 
-    gettimeofday(&time, NULL);
-    milliseconds = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-    return milliseconds;
-}
-void ft_take_forks(t_philo *philo)
-{
-    if (philo->philo_id % 2 == 0)
-    { 
-        pthread_mutex_lock(&philo->left_fork->fork);
-        printf_routine(philo, "has taken a fork");
-        pthread_mutex_lock(&philo->right_fork->fork);
-        printf_routine(philo, "has taken a fork");
-        usleep(100);
-    }
-    else
-    {
-        pthread_mutex_lock(&philo->right_fork->fork);
-        printf_routine(philo, "has taken a fork");
-        pthread_mutex_lock(&philo->left_fork->fork);
-        printf_routine(philo, "has taken a fork");
-    }
+	i = 0;
+	while (i < data->numofphilos)
+	{
+		if (pthread_join(philos[i++].thread, NULL) != 0)
+			return (ft_return_error("Failed to join thread"));
+	}
+	return (0);
 }
 
-void ft_eat(t_philo *philo)
+int	start_sim(t_data *data, t_philo *philos)
 {
-    pthread_mutex_lock(&philo->data->meal_lock);
-    philo->last_meals = time_now();
-    philo->meals++;
-    pthread_mutex_unlock(&philo->data->meal_lock);
+	pthread_t	monitor;
 
-    printf_routine(philo, "is eating");
-    u_sleep(philo->data->time_to_eat, philo->data);
-    pthread_mutex_unlock(&philo->left_fork->fork);
-    pthread_mutex_unlock(&philo->right_fork->fork);
+	data->start_time = time_now();
+	if (data->numofphilos == 1)
+	{
+		printf("0 1 has taken a fork\n");
+		usleep(data->time_to_die * 1000);
+		printf("%ld 1 died\n", data->time_to_die);
+		return (0);
+	}
+	if (start_threads(data, philos) != 0)
+		return (1);
+	if (pthread_create(&monitor, NULL, &death_eat_monitor, data) != 0)
+		return (ft_return_error("Failed to create thread"));
+	if (join_threads(data, philos) != 0)
+		return (1);
+	if (pthread_join(monitor, NULL) != 0)
+		return (ft_return_error("Failed to join thread"));
+	return (0);
 }
 
-void ft_sleep(t_philo *philo)
-{
-    printf_routine(philo, "is sleeping");
-	u_sleep(philo->data->time_to_sleep, philo->data);
-}
+// #include "philo.h"
 
-void ft_think(t_philo *philo)
-{
-    printf_routine(philo, "is thinking");
-}
-
-void *routine(void *philosopher)
-{
-    t_philo *philo;
-
-    philo = (t_philo *)philosopher;
-    while (1)
-    {
-        pthread_mutex_lock(&philo->data->print_lock);
-        if (philo->data->died_flag)
-        {
-            pthread_mutex_unlock(&philo->data->print_lock);
-            break;
-        }
-        pthread_mutex_unlock(&philo->data->print_lock);
-        ft_take_forks(philo);
-        ft_eat(philo);
-        ft_sleep(philo);
-        ft_think(philo);
-        if (philo->data->numofmeals != -1 && philo->meals == philo->data->numofmeals)
-            break;
-       // pthread_mutex_unlock(&philo->data->print_lock);
-    }
-    return (NULL);
-}
-void *death_eat_monitor(void *x)
-{
-    t_data *data = (t_data *)x;
-
-    while (1)
-    {
-        int i = -1;
-        int all_ate = 0;
-        while (++i < data->numofphilos)
-        {
-            pthread_mutex_lock(&data->meal_lock);
-            long last_meal = data->philos[i].last_meals;
-            int meals = data->philos[i].meals;
-            pthread_mutex_unlock(&data->meal_lock);
-            if ((time_now() - last_meal) >= data->time_to_die)
-            {
-                pthread_mutex_lock(&data->print_lock);
-                if (!data->died_flag)
-                {
-                    data->died_flag = true;
-                    printf("%ld %ld died\n", time_now() - data->start_time, data->philos[i].philo_id);
-                }
-                pthread_mutex_unlock(&data->print_lock);
-                return (NULL);
-            }
-            if (data->numofmeals != -1 && meals >= data->numofmeals)
-                all_ate++;
-        }
-        if (data->numofmeals != -1 && all_ate == data->numofphilos)
-        {
-            pthread_mutex_lock(&data->print_lock);
-            data->died_flag = true;
-            pthread_mutex_unlock(&data->print_lock);
-            return (NULL);
-        }
-    }
-        usleep(100);
-}
-
-
-int start_sim(t_data *data, t_philo *philos)
-{
-    int i;
-    pthread_t monitor;
-
-    data->start_time = time_now();
-    i = 0;
-    if (data->numofphilos == 1)
-    {
-        printf("0 1 has taken a fork\n");
-        usleep(data->time_to_die * 1000);
-        printf("%ld 1 died\n", data->time_to_die);
-        return (0);
-    }
-    while (i < data->numofphilos)
-    {
-        philos[i].last_meals = data->start_time;
-        if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
-        return (ft_return_error("Failed to create thread"));
-        usleep(100); 
-        i++;
-    }
-    i = 0;
-    if (pthread_create(&monitor, NULL, &death_eat_monitor, data) != 0)
-    return (ft_return_error("Failed to create thread"));
-    while (i < data->numofphilos)
-    {
-        if (pthread_join(philos[i++].thread, NULL) != 0)
-            return (ft_return_error("Failed to join thread"));
-    }
-    if (pthread_join(monitor, NULL) != 0)
-        return (ft_return_error("Failed to join thread"));
-    return (0);
-}
-// void *death_monitor(void *d)
+// static int	check_philo_death(t_data *data, int i)
 // {
-//     int i;
-//     int all_ate;
+// 	long	last_meal;
+// 	int		meals;
 
-//     i = 0;
-//     t_data *data;
-//     data = (t_data *)d;
-//    while (1)
+// 	pthread_mutex_lock(&data->meal_lock);
+// 	last_meal = data->philos[i].last_meals;
+// 	meals = data->philos[i].meals;
+// 	pthread_mutex_unlock(&data->meal_lock);
+// 	if ((time_now() - last_meal) >= data->time_to_die)
+// 	{
+// 		pthread_mutex_lock(&data->print_lock);
+// 		if (!data->died_flag)
+// 		{
+// 			data->died_flag = true;
+// 			printf("%ld %ld died\n", time_now() - data->start_time,
+// 				data->philos[i].philo_id);
+// 		}
+// 		pthread_mutex_unlock(&data->print_lock);
+// 		return (1);
+// 	}
+// 	return (data->numofmeals != -1 && meals >= data->numofmeals);
+// }
+
+// void	*death_eat_monitor(void *x)
+// {
+// 	t_data	*data;
+// 	int		i;
+// 	int		all_ate;
+
+// 	data = (t_data *)x;
+// 	while (1)
 // 	{
 // 		i = -1;
+// 		all_ate = 0;
 // 		while (++i < data->numofphilos)
 // 		{
-// 			pthread_mutex_lock(&data->meal_lock);
-// 			long last_meal = data->philos[i].last_meals;
-//             int meals = data->philos[i].meals;
-// 			pthread_mutex_unlock(&data->meal_lock);
-// 			if ((time_now() - last_meal) >= data->time_to_die)
-// 			{
-// 				pthread_mutex_lock(&data->print_lock);
-// 				if (!data->died_flag)
-// 				{
-// 					data->died_flag = true;
-// 					printf("%ld %ld died\n",
-// 						time_now() - data->start_time,
-// 						data->philos[i].philo_id);
-// 				}
-// 				pthread_mutex_unlock(&data->print_lock);
+// 			if (check_philo_death(data, i))
 // 				return (NULL);
-// 			}
-//             if (data->numofmeals != -1 && meals >= data->numofmeals)
-//                 all_ate++;
+// 			if (data->numofmeals != -1
+// 				&& data->philos[i].meals >= data->numofmeals)
+// 				all_ate++;
 // 		}
-// 		usleep(1000);
-//     }
-// 	return (NULL);
+// 		if (check_all_ate(data, all_ate))
+// 			return (NULL);
+// 		usleep(100);
+// 	}
+// }
+
+// static int	start_threads(t_data *data, t_philo *philos)
+// {
+// 	int	i;
+
+// 	i = 0;
+// 	while (i < data->numofphilos)
+// 	{
+// 		philos[i].last_meals = data->start_time;
+// 		if (pthread_create(&philos[i].thread, NULL, &routine, &philos[i]) != 0)
+// 			return (ft_return_error("Failed to create thread"));
+// 		usleep(100);
+// 		i++;
+// 	}
+// 	return (0);
+// }
+
+// static int	join_threads(t_data *data, t_philo *philos)
+// {
+// 	int	i;
+
+// 	i = 0;
+// 	while (i < data->numofphilos)
+// 	{
+// 		if (pthread_join(philos[i++].thread, NULL) != 0)
+// 			return (ft_return_error("Failed to join thread"));
+// 	}
+// 	return (0);
+// }
+
+// int	start_sim(t_data *data, t_philo *philos)
+// {
+// 	pthread_t	monitor;
+
+// 	data->start_time = time_now();
+// 	if (data->numofphilos == 1)
+// 	{
+// 		printf("0 1 has taken a fork\n");
+// 		usleep(data->time_to_die * 1000);
+// 		printf("%ld 1 died\n", data->time_to_die);
+// 		return (0);
+// 	}
+// 	if (start_threads(data, philos) != 0)
+// 		return (1);
+// 	if (pthread_create(&monitor, NULL, &death_eat_monitor, data) != 0)
+// 		return (ft_return_error("Failed to create thread"));
+// 	if (join_threads(data, philos) != 0)
+// 		return (1);
+// 	if (pthread_join(monitor, NULL) != 0)
+// 		return (ft_return_error("Failed to join thread"));
+// 	return (0);
 // }

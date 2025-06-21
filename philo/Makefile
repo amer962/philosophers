@@ -7,7 +7,10 @@ SRC = main.c\
 	  check_args.c\
 	  init.c\
 	  utils.c\
-	  sim.c
+	  sim.c\
+	  routine.c\
+	  utils_sim.c\
+	  death_eat.c
 
 OBJ = $(SRC:.c=.o)
 
